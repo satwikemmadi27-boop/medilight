@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediLight | Smart Medicine Reminder</title>
+<style>
+:root{--blue:#3267e3;--navy:#14213d;--line:#e5e7eb;--muted:#667085}
+*{box-sizing:border-box}body{margin:0;background:#f6f8fc;color:#202939;font-family:Arial,sans-serif}
+header{padding:25px 18px 32px;background:linear-gradient(135deg,var(--navy),var(--blue));color:white}
+.wrap,main{max-width:820px;margin:auto}.brand{display:flex;gap:12px;align-items:center}.logo{background:white;color:var(--blue);border-radius:14px;width:48px;height:48px;display:grid;place-items:center;font-size:28px;font-weight:bold}
+h1{margin:0;font-size:28px}.tagline{margin:7px 0 0}main{padding:0 14px;margin-top:-15px}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:19px;margin-bottom:16px;box-shadow:0 5px 18px #14213d0a}
+h2{font-size:18px;margin:0 0 15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:13px;font-weight:bold;margin-bottom:6px}input,select{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:9px;font-size:15px;background:white}
+button{border:0;border-radius:9px;padding:12px;font-weight:bold;cursor:pointer}.primary{background:var(--blue);color:white;width:100%;margin-top:14px}
+.muted{font-size:13px;color:var(--muted);line-height:1.5}.status{background:#eef3ff;color:#2348a5;border-radius:10px;padding:13px;line-height:1.5;font-size:14px}
+.empty{text-align:center;padding:20px;background:#f8fafc;color:var(--muted);border-radius:10px}.medicine{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);padding:13px;border-radius:11px;margin-top:10px}
+.medname{font-weight:bold;overflow-wrap:anywhere}.medtime{font-size:13px;color:var(--muted);margin-top:5px}.remove{background:#fff0f0;color:#b42318;flex-shrink:0}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:0 16px 25px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}h1{font-size:24px}.card{padding:15px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="brand"><div class="logo">＋</div><div><h1>MediLight</h1><p class="tagline">A little reminder can make a big difference.</p></div></div></div></header>
+<main>
+<section class="card">
+<h2>＋ Add a medicine reminder</h2>
+<form id="medicineForm">
+<div class="grid">
+<div><label for="medicineName">Medicine name</label><input id="medicineName" maxlength="80" placeholder="e.g., Demo Tablet" required></div>
+<div><label for="reminderTime">Reminder time</label><input id="reminderTime" type="time" required></div>
+<div><label for="schedule">Schedule</label><select id="schedule"><option>Daily</option><option>One-time demo reminder</option></select></div>
+<div><label for="note">Optional note</label><input id="note" maxlength="100" placeholder="e.g., Demo note"></div>
+</div><button class="primary" type="submit">Add reminder</button>
+</form><p class="muted">Enter only a reminder from your own care plan. MediLight does not recommend medicines or doses.</p>
+</section>
+<section class="card"><h2>Today's medicines</h2><div id="medicineList"><div class="empty">No reminders added yet. Add one above to get started.</div></div></section>
+<section class="card"><h2>Reminder status</h2><div id="status" class="status" role="status" aria-live="polite">MediLight demo is ready. Keep this page open to check reminder times.</div><p class="muted">Prototype limitation: reminders are checked only while this page is open. Background notifications, family alerts, cloud sync, AI reports, and hardware integration are not included.</p></section>
+</main><footer>Team Hack Titans · MediLight prototype · For demonstration only</footer>
+<script>
+(() => {
+const form=document.getElementById('medicineForm'), nameInput=document.getElementById('medicineName'), timeInput=document.getElementById('reminderTime'), scheduleInput=document.getElementById('schedule'), noteInput=document.getElementById('note'), list=document.getElementById('medicineList'), status=document.getElementById('status');
+let medicines=[]; const alerted=new Set();
+try{medicines=JSON.parse(localStorage.getItem('medilight_medicines')||'[]');if(!Array.isArray(medicines))medicines=[]}catch(e){medicines=[]}
+function save(){try{localStorage.setItem('medilight_medicines',JSON.stringify(medicines))}catch(e){}}
+function render(){
+ list.replaceChildren();
+ if(!medicines.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='No reminders added yet. Add one above to get started.';list.append(empty);return}
+ medicines.forEach((m,i)=>{const item=document.createElement('div');item.className='medicine';const details=document.createElement('div'),name=document.createElement('div'),time=document.createElement('div'),remove=document.createElement('button');name.className='medname';name.textContent=m.name;time.className='medtime';time.textContent=m.time+' · '+m.schedule+(m.note?' · '+m.note:'');details.append(name,time);remove.className='remove';remove.textContent='Remove';remove.type='button';remove.addEventListener('click',()=>{medicines.splice(i,1);save();render();status.textContent='Reminder removed.'});item.append(details,remove);list.append(item)})
+}
+form.addEventListener('submit',e=>{e.preventDefault();const name=nameInput.value.trim(),time=timeInput.value;if(!name||!time){status.textContent='Please enter a name and time.';return}medicines.push({id:Date.now()+Math.random(),name,time,schedule:scheduleInput.value,note:noteInput.value.trim(),lastAlertDate:''});save();render();form.reset();status.textContent='Reminder added. Keep this page open for the demo reminder.'});
+function check(){const now=new Date(),time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),today=now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();medicines.forEach(m=>{const key=m.id+'-'+today;if(m.time===time&&!alerted.has(key)&&(m.schedule==='Daily'||m.lastAlertDate!==today)){alerted.add(key);m.lastAlertDate=today;save();status.textContent='Reminder: '+m.name+'. Please check your own care instructions.';window.alert('MediLight reminder\n'+m.name+'\nPlease check your own care instructions.')}})}
+render();setInterval(check,15000);
+})();
+</script>
+</body></html>
